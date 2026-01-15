@@ -4,6 +4,7 @@ const app = express();
 
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Corrección del error PathError: usamos (.*) en lugar de *
 app.get('(.*)', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });

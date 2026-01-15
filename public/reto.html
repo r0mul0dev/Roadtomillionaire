@@ -1,83 +1,84 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Panel de Apuestas</title>
+    <meta charset="UTF-8"><title>Gestión de Apuestas</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="container py-4">
-    <div class="mb-3"><a href="dashboard.html" class="text-secondary text-decoration-none">← Volver</a></div>
-    
-    <div class="card bg-primary text-white p-4 mb-4 shadow text-center">
-        <h2 id="nomReto">---</h2>
-        <h1 class="display-4">Banco: <span id="bancoDisplay">$0</span></h1>
-        <p class="mb-0">Objetivo: <span id="metaDisplay">$0</span></p>
+    <a href="dashboard.html" class="btn btn-link mb-2 p-0 text-decoration-none">← Volver</a>
+    <div class="card bg-dark text-white p-4 mb-4 text-center">
+        <h2 id="nReto">Cargando...</h2>
+        <h1 class="display-3">Banco: <span id="bVal">$0</span></h1>
+        <p>Meta: <span id="mVal">$0</span></p>
     </div>
 
-    <form id="betForm" class="row g-2 mb-4 p-3 bg-white border rounded shadow-sm">
-        <div class="col-md-3"><input type="number" id="monto" class="form-control" placeholder="Monto $" required></div>
+    <form id="fApuesta" class="row g-2 mb-4 p-3 border rounded bg-white shadow-sm">
+        <div class="col-md-3"><input type="number" id="monto" class="form-control" placeholder="Apostado" required></div>
         <div class="col-md-2"><input type="number" step="0.01" id="cuota" class="form-control" placeholder="Cuota" required></div>
         <div class="col-md-4">
-            <select id="status" class="form-select">
-                <option value="en espera">En Espera (Obligatorio)</option>
+            <select id="stat" class="form-select">
+                <option value="en espera">En Espera</option>
                 <option value="ganado">Ganado</option>
                 <option value="perdido">Perdido</option>
             </select>
         </div>
-        <div class="col-md-3"><button type="submit" class="btn btn-primary w-100">Registrar</button></div>
+        <div class="col-md-3"><button type="submit" class="btn btn-success w-100">Registrar</button></div>
     </form>
 
-    <table class="table table-striped align-middle">
-        <thead class="table-dark">
-            <tr><th>Monto</th><th>Cuota</th><th>G. Potencial</th><th>Status</th></tr>
+    <table class="table table-hover shadow-sm border">
+        <thead class="table-light">
+            <tr><th>Apostado</th><th>Cuota</th><th>G. Potencial</th><th>Status</th></tr>
         </thead>
-        <tbody id="tablaBets"></tbody>
+        <tbody id="tBody"></tbody>
     </table>
 
     <script>
         const supabase = supabase.createClient('TU_URL', 'TU_KEY');
-        const id = new URLSearchParams(window.location.search).get('id');
+        const rId = new URLSearchParams(window.location.search).get('id');
 
-        async function cargarPagina() {
-            const { data: r } = await supabase.from('challenges').select('*').eq('id', id).single();
-            document.getElementById('nomReto').innerText = r.nombre;
-            document.getElementById('bancoDisplay').innerText = `$${r.banco_actual}`;
-            document.getElementById('metaDisplay').innerText = `$${r.monto_objetivo}`;
+        async function init() {
+            const { data: r } = await supabase.from('challenges').select('*').eq('id', rId).single();
+            document.getElementById('nReto').innerText = r.nombre;
+            document.getElementById('bVal').innerText = `$${r.banco_actual}`;
+            document.getElementById('mVal').innerText = `$${r.monto_objetivo}`;
             
-            const { data: bets } = await supabase.from('bets').select('*').eq('challenge_id', id).order('created_at', { ascending: false });
-            document.getElementById('tablaBets').innerHTML = bets.map(b => `
+            const { data: b } = await supabase.from('bets').select('*').eq('challenge_id', rId).order('created_at', {ascending: false});
+            document.getElementById('tBody').innerHTML = b.map(a => `
                 <tr>
-                    <td>$${b.monto_apostado}</td>
-                    <td>${b.cuota}</td>
-                    <td>$${(b.monto_apostado * b.cuota).toFixed(2)}</td>
-                    <td><span class="badge bg-${b.status==='ganado'?'success':b.status==='perdido'?'danger':'warning'}">${b.status}</span></td>
+                    <td>$${a.monto_apostado}</td>
+                    <td>${a.cuota}</td>
+                    <td>$${(a.monto_apostado * a.cuota).toFixed(2)}</td>
+                    <td><span class="badge bg-${a.status==='ganado'?'success':a.status==='perdido'?'danger':'warning'}">${a.status}</span></td>
                 </tr>
             `).join('');
         }
 
-        document.getElementById('betForm').onsubmit = async (e) => {
+        document.getElementById('fApuesta').onsubmit = async (e) => {
             e.preventDefault();
             const m = parseFloat(document.getElementById('monto').value);
             const c = parseFloat(document.getElementById('cuota').value);
-            const s = document.getElementById('status').value;
+            const s = document.getElementById('stat').value;
 
-            // 1. Guardar Apuesta
-            await supabase.from('bets').insert([{ challenge_id: id, monto_apostado: m, cuota: c, status: s }]);
+            // Guardar apuesta
+            await supabase.from('bets').insert([{ challenge_id: rId, monto_apostado: m, cuota: c, status: s }]);
 
-            // 2. Lógica de Banco
-            const { data: r } = await supabase.from('challenges').select('banco_actual, monto_objetivo').eq('id', id).single();
+            // Calcular nuevo banco
+            const { data: r } = await supabase.from('challenges').select('banco_actual, monto_objetivo').eq('id', rId).single();
+            
+            // Lógica: Restar siempre el apostado. Si gana, sumar ganancia.
             let nuevoBanco = r.banco_actual - m;
             if (s === 'ganado') nuevoBanco += (m * c);
 
-            let nuevoEstado = 'activo';
-            if (nuevoBanco >= r.monto_objetivo) nuevoEstado = 'completado';
-            if (nuevoBanco <= 0) nuevoEstado = 'perdido';
+            // Verificar si el reto terminó
+            let estado = 'activo';
+            if (nuevoBanco >= r.monto_objetivo) estado = 'completado';
+            if (nuevoBanco <= 0) estado = 'perdido';
 
-            await supabase.from('challenges').update({ banco_actual: nuevoBanco, estado: nuevoEstado }).eq('id', id);
+            await supabase.from('challenges').update({ banco_actual: nuevoBanco, estado }).eq('id', rId);
             location.reload();
         };
-        cargarPagina();
+        init();
     </script>
 </body>
 </html>
