@@ -9,32 +9,28 @@
 </head>
 <body class="bg-light d-flex align-items-center" style="height: 100vh;">
     <div class="container" style="max-width: 400px;">
-        <div class="card shadow-sm p-4">
-            <h3 class="text-center mb-4">Inicia Sesión</h3>
-            <input type="email" id="email" class="form-control mb-2" placeholder="Email">
-            <input type="password" id="password" class="form-control mb-3" placeholder="Contraseña">
-            <button onclick="login()" class="btn btn-primary w-100 mb-2">Entrar</button>
-            <button onclick="registro()" class="btn btn-outline-secondary w-100">Registrarse</button>
+        <div class="card shadow p-4">
+            <h3 class="text-center mb-4">Acceso Reto</h3>
+            <div id="authForm">
+                <input type="email" id="email" class="form-control mb-2" placeholder="Email">
+                <input type="password" id="password" class="form-control mb-3" placeholder="Contraseña">
+                <button onclick="handleAuth('login')" class="btn btn-primary w-100 mb-2">Entrar</button>
+                <button onclick="handleAuth('registro')" class="btn btn-outline-secondary w-100">Registrarse</button>
+            </div>
         </div>
     </div>
-
     <script>
-        const supabase = supabase.createClient('TU_SUPABASE_URL', 'TU_SUPABASE_ANON_KEY');
+        const supabase = supabase.createClient('TU_URL', 'TU_KEY');
 
-        async function login() {
+        async function handleAuth(type) {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            const { error } = await supabase.auth.signInWithPassword({ email, password });
+            const { data, error } = type === 'login' 
+                ? await supabase.auth.signInWithPassword({ email, password })
+                : await supabase.auth.signUp({ email, password });
+
             if (error) alert(error.message);
             else window.location.href = 'dashboard.html';
-        }
-
-        async function registro() {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const { error } = await supabase.auth.signUp({ email, password });
-            if (error) alert("Revisa tu correo para confirmar");
-            else alert("Registro exitoso");
         }
     </script>
 </body>

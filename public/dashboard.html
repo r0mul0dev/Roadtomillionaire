@@ -6,39 +6,39 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="container py-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Mis Retos de Apuestas</h2>
-        <button class="btn btn-danger btn-sm" onclick="supabase.auth.signOut().then(() => location.href='index.html')">Salir</button>
-    </div>
-
-    <div class="card p-3 mb-4 shadow-sm">
-        <h5>Crear Nuevo Reto</h5>
-        <div class="row g-2">
-            <div class="col-md-4"><input type="text" id="nombre" class="form-control" placeholder="Nombre (Ej: Reto 1)"></div>
-            <div class="col-md-3"><input type="number" id="inicial" class="form-control" placeholder="Monto Inicial"></div>
-            <div class="col-md-3"><input type="number" id="meta" class="form-control" placeholder="Meta $X"></div>
-            <div class="col-md-2"><button onclick="crearReto()" class="btn btn-success w-100">Empezar</button></div>
+<body class="bg-light py-5">
+    <div class="container" style="max-width: 800px;">
+        <div class="d-flex justify-content-between mb-4">
+            <h2>Mis Retos</h2>
+            <button class="btn btn-sm btn-danger" onclick="supabase.auth.signOut().then(() => location.href='index.html')">Salir</button>
         </div>
-    </div>
 
-    <div id="listaRetos" class="row"></div>
+        <div class="card p-3 mb-4 shadow-sm">
+            <h5>Nuevo Reto</h5>
+            <div class="row g-2">
+                <div class="col-md-5"><input type="text" id="nombre" class="form-control" placeholder="Nombre (Ej: Reto 1)"></div>
+                <div class="col-md-3"><input type="number" id="inicial" class="form-control" placeholder="Inicio $"></div>
+                <div class="col-md-3"><input type="number" id="meta" class="form-control" placeholder="Meta $"></div>
+                <div class="col-md-1"><button onclick="crearReto()" class="btn btn-success w-100">+</button></div>
+            </div>
+        </div>
+
+        <div id="listaRetos" class="row"></div>
+    </div>
 
     <script>
-        const supabase = supabase.createClient('TU_SUPABASE_URL', 'TU_SUPABASE_ANON_KEY');
+        const supabase = supabase.createClient('TU_URL', 'TU_KEY');
 
         async function cargarRetos() {
             const { data: { user } } = await supabase.auth.getUser();
-            const { data: retos } = await supabase.from('challenges').select('*').eq('user_id', user.id);
+            const { data: retos } = await supabase.from('challenges').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
             
-            const div = document.getElementById('listaRetos');
-            div.innerHTML = retos.map(r => `
-                <div class="col-md-4 mb-3">
-                    <div class="card p-3 shadow-sm border-${r.estado === 'completado' ? 'success' : 'primary'}">
+            document.getElementById('listaRetos').innerHTML = retos.map(r => `
+                <div class="col-md-6 mb-3">
+                    <div class="card p-3 border-${r.estado === 'completado' ? 'success' : r.estado === 'perdido' ? 'danger' : 'primary'}">
                         <h6>${r.nombre}</h6>
-                        <p class="small mb-1">Banco: <b>$${r.banco_actual}</b> / Meta: $${r.monto_objetivo}</p>
-                        <span class="badge bg-${r.estado === 'activo' ? 'primary' : 'secondary'} mb-2">${r.estado}</span>
-                        <a href="reto.html?id=${r.id}" class="btn btn-sm btn-dark">Gestionar</a>
+                        <p class="mb-1">Banco: <b>$${r.banco_actual}</b> / Meta: $${r.monto_objetivo}</p>
+                        <a href="reto.html?id=${r.id}" class="btn btn-sm btn-dark w-100">Abrir Reto</a>
                     </div>
                 </div>
             `).join('');
@@ -46,13 +46,10 @@
 
         async function crearReto() {
             const { data: { user } } = await supabase.auth.getUser();
-            const nombre = document.getElementById('nombre').value;
-            const inicial = document.getElementById('inicial').value;
-            const meta = document.getElementById('meta').value;
-
-            await supabase.from('challenges').insert([{
-                user_id: user.id, nombre, monto_inicial: inicial, monto_objetivo: meta, banco_actual: inicial
-            }]);
+            const n = document.getElementById('nombre').value;
+            const i = document.getElementById('inicial').value;
+            const m = document.getElementById('meta').value;
+            await supabase.from('challenges').insert([{ user_id: user.id, nombre: n, monto_inicial: i, monto_objetivo: m, banco_actual: i }]);
             location.reload();
         }
         cargarRetos();
