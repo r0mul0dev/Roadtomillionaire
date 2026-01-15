@@ -3,12 +3,19 @@ const express = require('express');
 const path = require('path');
 const app = express();
 
-app.use(express.static('public'));
+// Servir archivos estáticos de la carpeta public
+app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('*', (req, res) => {
-    res.sendFile(path.resolve(__dirname, 'public', 'index.html'));
+// EL CAMBIO ESTÁ AQUÍ: Usamos (.*) en lugar de *
+app.get('(.*)', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Esto es necesario para desarrollo local
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Servidor en puerto ${PORT}`));
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(PORT, () => console.log(`Servidor en puerto ${PORT}`));
+}
+
+// ESTA LÍNEA ES VITAL PARA VERCEL
 module.exports = app;
