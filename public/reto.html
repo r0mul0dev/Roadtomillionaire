@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Seguimiento de Reto</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="container py-5">
+    <a href="dashboard.html" class="btn btn-link mb-3 text-decoration-none">← Volver</a>
+    <div class="row mb-4 bg-dark text-white p-4 rounded shadow">
+        <div class="col">
+            <h2 id="tituloReto">Cargando...</h2>
+            <h3>Banco: <span id="bancoVal">$0</span></h3>
+        </div>
+    </div>
+
+    <form id="formApuesta" class="row g-2 mb-4">
+        <div class="col-md-3"><input type="number" id="monto" class="form-control" placeholder="Apostado" required></div>
+        <div class="col-md-2"><input type="number" step="0.01" id="cuota" class="form-control" placeholder="Cuota" required></div>
+        <div class="col-md-3">
+            <select id="status" class="form-select">
+                <option value="en espera">En Espera</option>
+                <option value="ganado">Ganado</option>
+                <option value="perdido">Perdido</option>
+            </select>
+        </div>
+        <div class="col-md-2"><button type="submit" class="btn btn-primary w-100">Añadir</button></div>
+    </form>
+
+    <table class="table table-hover border shadow-sm">
+        <thead class="table-light">
+            <tr><th>Apostado</th><th>Cuota</th><th>G. Potencial</th><th>Status</th></tr>
+        </thead>
+        <tbody id="tablaApuestas"></tbody>
+    </table>
+
+    <script>
+        const supabase = supabase.createClient('TU_SUPABASE_URL', 'TU_SUPABASE_ANON_KEY');
+        const urlParams = new URLSearchParams(window.location.search);
+        const challengeId = urlParams.get('id');
+
+        async function init() {
+            const { data: reto } = await supabase.from('challenges').select('*').eq('id', challengeId).single();
+            document.getElementById('tituloReto').innerText = reto.nombre;
+            document.getElementById('bancoVal').innerText = `$${reto.banco_actual}`;
+            cargarApuestas();
+        }
+
+        document.getElementById('formApuesta').onsubmit = async (e) => {
+            e.preventDefault();
+            const monto = parseFloat(document.getElementById('monto').value);
+            const cuota = parseFloat(document.getElementById('cuota').value);
+            const status = document.getElementById('status').value;
+
+            // 1. Guardar Apuesta
+            await supabase.from('bets').insert([{ challenge_id: challengeId, monto_apostado: monto, cuota, status }]);
+
+            // 2. Lógica de Banco
+            const { data: reto } = await supabase.from('challenges').select('banco_actual, monto_objetivo').eq('id', challengeId).single();
+            let nuevoBanco = reto.banco_actual - monto;
+            if (status === 'ganado') nuevoBanco += (monto * cuota);
+
+            // 3. Actualizar Banco y Estado
+            let estado = 'activo';
+            if (nuevoBanco >= reto.monto_objetivo) estado = 'completado';
+            if (nuevoBanco <= 0) estado = 'perdido';
+
+            await supabase.from('challenges').update({ banco_actual: nuevoBanco, estado }).eq('id', challengeId);
+            location.reload();
+        };
+
+        async function cargarApuestas() {
+            const { data: apuestas } = await supabase.from('bets').select('*').eq('challenge_id', challengeId);
+            const tbody = document.getElementById('tablaApuestas');
+            tbody.innerHTML = apuestas.map(a => `
+                <tr>
+                    <td>$${a.monto_apostado}</td>
+                    <td>${a.cuota}</td>
+                    <td>$${(a.monto_apostado * a.cuota).toFixed(2)}</td>
+                    <td><span class="badge bg-${a.status === 'ganado' ? 'success' : a.status === 'perdido' ? 'danger' : 'warning'}">${a.status}</span></td>
+                </tr>
+            `).join('');
+        }
+        init();
+    </script>
+</body>
+</html>
